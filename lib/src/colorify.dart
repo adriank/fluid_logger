@@ -1,0 +1,9 @@
+String color(int color, String text) => '\x1B[${color.toString()}m$text\x1B[0m';
+String bold(String text) => color(1, text);
+String red(String text) => color(31, text);
+String green(String text) => color(32, text);
+String yellow(String text) => color(33, text);
+String blue(String text) => color(34, text);
+String magenta(String text) => color(35, text);
+String cyan(String text) => color(36, text);
+String white(String text) => color(37, text);
