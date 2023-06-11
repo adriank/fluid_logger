@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
@@ -29,8 +30,7 @@ class LogMessage {
   final int columnNumber;
 }
 
-String defaultMessageFormatter(LogMessage message) => '''[${message.scope}] ${message.timestamp.toString().split(' ')[1]} ${message.fileRelativePath}:${message.functionName}:${message.lineNumber} (${message.fileLink}:${message.lineNumber}:${message.columnNumber})
-${message.message}''';
+String defaultMessageFormatter(LogMessage message) => '[${message.scope}] ${message.timestamp.toString().split(' ')[1]} ${message.fileRelativePath}:${message.functionName}:${message.lineNumber} (${message.fileLink}:${message.lineNumber}:${message.columnNumber})\n${message.message}';
 
 enum DebugLevel {
   debug,
@@ -112,7 +112,7 @@ class FluidLogger {
     final toPrint = messageFormatter(logMessage);
     if (kDebugMode) {
       log(
-        toPrint.split('\n').map((e) => level.colorify(e)).join('\n').trim(),
+        toPrint.split('\n').map((e) => level.colorify(e)).join('\n'),
         level: 2000,
         name: level.toString(),
       );
