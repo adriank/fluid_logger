@@ -114,7 +114,7 @@ class FluidLogger {
     );
     final toPrint = messageFormatter(logMessage);
     if (kDebugMode) {
-      debugPrint(toPrint.split('\n').map((e) => level.colorify(e)).join('\n'));
+      print(toPrint.split('\n').map((e) => level.colorify(e)).join('\n'));
       // log(
       //   toPrint.split('\n').map((e) => level.colorify(e)).join('\n'),
       //   level: 0,
