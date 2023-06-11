@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 const log = FluidLogger(
   debugLevel: DebugLevel.debug,
-  scope: 'TEST',
+  track: 'TEST',
   packageName: 'fluid_logger',
 );
 

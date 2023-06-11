@@ -9,7 +9,7 @@ import 'package:fluid_logger/src/colorify.dart';
 class LogMessage {
   const LogMessage({
     required this.timestamp,
-    required this.scope,
+    required this.track,
     required this.fileRelativePath,
     required this.fileLink,
     required this.functionName,
@@ -20,7 +20,7 @@ class LogMessage {
   });
 
   final DateTime timestamp;
-  final String? scope;
+  final String? track;
   final String fileRelativePath;
   final String fileLink;
   final String functionName;
@@ -30,7 +30,7 @@ class LogMessage {
   final int columnNumber;
 }
 
-String defaultMessageFormatter(LogMessage message) => '[${message.scope}] ${message.timestamp.toString().split(' ')[1]} ${message.fileRelativePath}:${message.functionName}:${message.lineNumber} (${message.fileLink}:${message.lineNumber}:${message.columnNumber})\n${message.message}';
+String defaultMessageFormatter(LogMessage message) => '[${message.track}] ${message.timestamp.toString().split(' ')[1]} ${message.fileRelativePath}:${message.functionName}:${message.lineNumber} (${message.fileLink}:${message.lineNumber}:${message.columnNumber})\n${message.message}';
 
 enum DebugLevel {
   debug,
@@ -65,8 +65,8 @@ class FluidLogger {
   const FluidLogger({
     this.debugLevel = DebugLevel.error,
     this.cutAfter = 800,
-    this.messageFormatter = defaultMessageFormatter,
-    this.scope,
+    this.messageFormatter = globalMessageFormatter,
+    this.track,
     this.forceDebugMessages = false,
     this.packageName = 'lib',
   });
@@ -79,11 +79,14 @@ class FluidLogger {
   /// Cut long messages.
   final int? cutAfter;
 
-  /// Set non-standard message formatter. Default is defined in [defaultMessageFormatter].
+  /// Set non-standard message formatter globally. Default is defined in [defaultMessageFormatter].
+  static const String Function(LogMessage message) globalMessageFormatter = defaultMessageFormatter;
+
+  /// Set non-standard message formatter for this [track]. Default is defined in [defaultMessageFormatter].
   final String Function(LogMessage message) messageFormatter;
 
   /// Used to distinguish between different loggers. E.g. 'Routing', 'UserRepository'.
-  final String? scope;
+  final String? track;
 
   /// This can be useful on web where no debug symbols from Flutter are available as of now.
   final bool forceDebugMessages;
@@ -100,7 +103,7 @@ class FluidLogger {
     final shouldCut = cutAfter == null ? false : cutAfter! < message.length;
     final logMessage = LogMessage(
       timestamp: DateTime.now(),
-      scope: scope,
+      track: track,
       fileRelativePath: (trace.fileName.split(packageName)..removeAt(0)).join(packageName),
       fileLink: 'file:${trace.fileName}',
       functionName: trace.functionName,
@@ -111,11 +114,12 @@ class FluidLogger {
     );
     final toPrint = messageFormatter(logMessage);
     if (kDebugMode) {
-      log(
-        toPrint.split('\n').map((e) => level.colorify(e)).join('\n'),
-        level: 2000,
-        name: level.toString(),
-      );
+      debugPrint(toPrint.split('\n').map((e) => level.colorify(e)).join('\n'));
+      // log(
+      //   toPrint.split('\n').map((e) => level.colorify(e)).join('\n'),
+      //   level: 0,
+      //   name: level.toString(),
+      // );
     } else {
       print(toPrint);
     }
