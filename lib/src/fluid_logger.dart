@@ -96,7 +96,7 @@ class FluidLogger {
   /// This can be useful on web where no debug symbols from Flutter are available as of now.
   final bool forceDebugMessages;
 
-  void _print(String message, {DebugLevel level = DebugLevel.debug}) {
+  void _print(String Function() messageFn, {DebugLevel level = DebugLevel.debug}) {
     if (!shouldPrintDebug(level)) {
       return;
     }
@@ -105,13 +105,14 @@ class FluidLogger {
       return;
     }
     final (trace, previousTrace) = _getTraceData();
+    final message = level == DebugLevel.start ? '${trace.functionName}(${messageFn()})' : messageFn();
     final shouldCut = cutAfter == null ? false : cutAfter! < message.length;
     final logMessage = LogMessage(
       timestamp: DateTime.now(),
       track: track,
       fileRelativePath: (trace.fileName.split(packageName)..removeAt(0)).join(packageName),
       fileLink: trace.link,
-      functionName: trace.functionName,
+      functionName: '${trace.functionName}()',
       lineNumber: trace.lineNumber,
       columnNumber: trace.columnNumber,
       message: ((shouldCut ? '${message.substring(0, cutAfter)}...(cut)' : message)).trim(),
@@ -185,22 +186,25 @@ class FluidLogger {
   }
 
   /// Print information about current function. Takes a list of function arguments. The log message level is 'info'.
-  start([List<dynamic>? arguments]) => _print('with: ${arguments?.map((e) => e.toString()).join(', ') ?? '(no arguments)'}', level: DebugLevel.start);
+  start([List<dynamic>? arguments]) => _print(
+        () => (arguments ?? []).join(', '),
+        level: DebugLevel.start,
+      );
 
   /// The most granular messages. Should be printed only when feature needs to be thoughtfully debugged.
-  debug(String message) => _print(message, level: DebugLevel.debug);
+  debug(String Function() message) => _print(message, level: DebugLevel.debug);
 
   /// Information that is more general than debug level.
-  info(String message) => _print(message, level: DebugLevel.info);
+  info(String Function() message) => _print(message, level: DebugLevel.info);
 
   /// Message that requires attention of a developer.
-  warning(String message) => _print(message, level: DebugLevel.warning);
+  warning(String Function() message) => _print(message, level: DebugLevel.warning);
 
   /// Indicates success of an operation. Should be used after successful data retrieval from server, database etc.
-  success(String message) => _print(message, level: DebugLevel.success);
+  success(String Function() message) => _print(message, level: DebugLevel.success);
 
   /// Indicates error of an operation. Should be used after unsuccessful data retrieval from server, database etc.
-  error(String message) => _print(message, level: DebugLevel.error);
+  error(String Function() message) => _print(message, level: DebugLevel.error);
 
   /// Whether log message. Checks for forceDebugMessages, kDebugMode, and log level.
   bool shouldPrintDebug(DebugLevel level) => forceDebugMessages || kDebugMode && DebugLevel.values.indexOf(level) >= DebugLevel.values.indexOf(debugLevel);
