@@ -16,6 +16,7 @@ void main() {
     log.warning(() => 'warning');
     log.success(() => 'success');
     log.error(() => 'error');
+    // delay exit so that all messages are printed
     await Future.delayed(const Duration(seconds: 1));
   });
 }
