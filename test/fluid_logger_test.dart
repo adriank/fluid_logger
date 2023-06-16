@@ -10,7 +10,7 @@ const log = FluidLogger(
 void main() {
   test('prints', () async {
     log.start();
-    log.start([1, 2, 3, 'adfa']);
+    log.start([1, 2, 3, 'test']);
     log.debug(() => 'debug');
     log.info(() => 'info');
     log.warning(() => 'warning');
