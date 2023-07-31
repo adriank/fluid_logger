@@ -262,14 +262,14 @@ class _CustomTrace {
     }
     final parts = frame.replaceAll('<anonymous closure>', 'anonymous').replaceAll('<anonymous, closure>', 'anonymous').split(' ').where((element) => element.isNotEmpty && element != 'new').toList();
     // print(parts);
-
+    final (int line, int column) = (int.parse(parts[1].split(':')[0]), int.parse(parts[1].split(':')[1]));
     if (kIsWeb) {
       return _Frame(
         fileName: parts[0],
-        link: parts[0],
-        lineNumber: int.parse(parts[1].split(':')[0]),
+        link: '${parts[0]}:${parts[1]}',
+        lineNumber: line,
         functionName: parts[2].split('.anony')[0].split('(')[0].replaceAll('<fn>', 'anonymous fn'),
-        columnNumber: int.parse(parts[1].split(':')[1]),
+        columnNumber: column,
       );
     }
     List<String> listOfInfos = ['', '', '0', '0'];
