@@ -2,11 +2,8 @@
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:fluid_logger/src/colorify.dart';
 
-@immutable
 class LogMessageData {
   const LogMessageData({
     required this.timestamp,
@@ -66,7 +63,6 @@ enum DebugLevel {
       };
 }
 
-@immutable
 class FluidLogger {
   const FluidLogger({
     this.debugLevel = DebugLevel.error,
@@ -75,11 +71,13 @@ class FluidLogger {
     this.track,
     this.forceDebugMessages = false,
     this.packageName = 'lib',
+    this.kIsWeb = false,
+    this.kDebugMode = true,
   });
 
   static String pretty(dynamic object, {int indent = 2}) => JsonEncoder.withIndent(' ' * indent).convert(json);
 
-  /// Provide package name from pubspec.yaml to get relative files paths.
+  /// Provide package name from pubspec.yaml to get relative file paths.
   final String packageName;
 
   final DebugLevel debugLevel;
@@ -100,6 +98,8 @@ class FluidLogger {
 
   /// This can be useful on web where no debug symbols from Flutter are available as of now.
   final bool forceDebugMessages;
+  final bool kIsWeb;
+  final bool kDebugMode;
 
   void _print(String Function() messageFn, {DebugLevel level = DebugLevel.debug}) {
     if (!shouldPrintDebug(level)) {
@@ -107,7 +107,6 @@ class FluidLogger {
     }
 
     final (trace, previousTrace) = _getTraceData();
-    // print(trace);
     final message = switch (level) {
       DebugLevel.start => '${trace.functionName}(${messageFn()})',
       _ => messageFn(),
@@ -140,6 +139,7 @@ class FluidLogger {
     final toPrint = messageFormatter(logMessage, previousLogMessage);
     if (kDebugMode) {
       // TODO refactor ifs
+
       for (var e in toPrint.split('\n')) {
         if (e.contains(logMessage.fileLink)) {
           e = e.replaceAll(logMessage.fileLink, '');
@@ -156,16 +156,34 @@ class FluidLogger {
           //   );
           //   continue;
           // }
-          log(
-            '${level.colorify(e)} ${logMessage.fileLink}',
-            name: level.toString(),
-          );
-          continue;
+          // final printString = '[${level.colorify(level.toString())}] ${level.colorify(e)} ${logMessage.fileLink}';
+          final printString = '${level.colorify(e)} ${logMessage.fileLink}';
+          switch (kIsWeb) {
+            case true:
+              print(printString);
+            case _:
+              log(
+                printString,
+                name: level.colorify(level.toString()),
+                time: DateTime.now(),
+                // sequenceNumber: r * 2,
+              );
+          }
+        } else {
+          // final printString = '[${level.colorify(level.toString())}] ${level.colorify(e)}';
+          final printString = level.colorify(e);
+          switch (kIsWeb) {
+            case true:
+              print(printString);
+            case _:
+              log(
+                printString,
+                name: level.colorify(level.toString()),
+                time: DateTime.now(),
+                // sequenceNumber: r * 2,
+              );
+          }
         }
-        log(
-          level.colorify(e),
-          name: level.toString(),
-        );
       }
     } else {
       print(toPrint);
@@ -176,7 +194,7 @@ class FluidLogger {
     try {
       throw Exception();
     } catch (e, s) {
-      return (_CustomTrace.fromStackTrace(s).currentCall, _CustomTrace.fromStackTrace(s).previousCall);
+      return (_CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb).currentCall, _CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb).previousCall);
     }
   }
 
@@ -202,10 +220,9 @@ class FluidLogger {
   void error(String Function() message) => _print(message, level: DebugLevel.error);
 
   /// Whether log message. Checks for forceDebugMessages, kDebugMode, and log level.
-  bool shouldPrintDebug(DebugLevel level) => forceDebugMessages || kDebugMode && DebugLevel.values.indexOf(level) >= DebugLevel.values.indexOf(debugLevel);
+  bool shouldPrintDebug(DebugLevel level) => (forceDebugMessages || kDebugMode) && DebugLevel.values.indexOf(level) >= DebugLevel.values.indexOf(debugLevel);
 }
 
-@immutable
 class _Frame {
   const _Frame({
     required this.fileName,
@@ -232,24 +249,27 @@ columnNumber: $columnNumber
 }
 
 class _CustomTrace {
-  _CustomTrace({required this.currentCall, this.previousCall});
+  _CustomTrace({
+    required this.currentCall,
+    this.previousCall,
+  });
 
-  factory _CustomTrace.fromStackTrace(StackTrace trace) {
+  factory _CustomTrace.fromStackTrace(StackTrace trace, {bool kIsWeb = false}) {
     // print('start _CustomTrace.fromStackTrace');
     final frames = trace.toString().split('\n');
     // print('frames:');
     // frames.forEach(print);
-    const startIndex = kIsWeb ? 4 : 3;
+    final startIndex = kIsWeb ? 4 : 3;
     return _CustomTrace(
-      currentCall: _readFrame(frames[startIndex]),
-      previousCall: (frames.length >= startIndex + 1) ? _readFrame(frames[startIndex + 1]) : null,
+      currentCall: _readFrame(frames[startIndex], kIsWeb: kIsWeb),
+      previousCall: (frames.length >= startIndex + 1) ? _readFrame(frames[startIndex + 1], kIsWeb: kIsWeb) : null,
     );
   }
 
   _Frame currentCall;
   _Frame? previousCall;
 
-  static _Frame _readFrame(String frame) {
+  static _Frame _readFrame(String frame, {bool kIsWeb = false}) {
     // print('start _CustomTrace._readFrame, $frame');
     if (frame == '<asynchronous suspension>') {
       return const _Frame(
@@ -262,8 +282,8 @@ class _CustomTrace {
     }
     final parts = frame.replaceAll('<anonymous closure>', 'anonymous').replaceAll('<anonymous, closure>', 'anonymous').split(' ').where((element) => element.isNotEmpty && element != 'new').toList();
     // print(parts);
-    final (int line, int column) = (int.parse(parts[1].split(':')[0]), int.parse(parts[1].split(':')[1]));
     if (kIsWeb) {
+      final (int line, int column) = (int.parse(parts[1].split(':')[0]), int.parse(parts[1].split(':')[1]));
       return _Frame(
         fileName: parts[0],
         link: '${parts[0]}:${parts[1]}',
@@ -274,10 +294,10 @@ class _CustomTrace {
     }
     List<String> listOfInfos = ['', '', '0', '0'];
 
-    // print(listOfInfos);
     try {
-      listOfInfos = parts[2].split(':');
+      listOfInfos = parts[2].replaceAll('(', '').replaceAll(')', '').split(':');
     } catch (_) {}
+    // print(listOfInfos);
 
     return _Frame(
       fileName: listOfInfos[1],

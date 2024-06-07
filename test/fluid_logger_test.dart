@@ -1,5 +1,6 @@
+import 'package:test/test.dart';
+
 import 'package:fluid_logger/fluid_logger.dart';
-import 'package:flutter_test/flutter_test.dart';
 
 const log = FluidLogger(
   debugLevel: DebugLevel.debug,
