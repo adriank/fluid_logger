@@ -114,6 +114,12 @@ class FluidLogger {
       return;
     }
 
+    // If we're in production, there is no trace to read from.
+    if (!kDebugMode) {
+      print(messageFn());
+      return;
+    }
+
     final (trace, previousTrace) = _getTraceData();
     final message = switch (level) {
       DebugLevel.start => '${trace.functionName}(${messageFn()})',
@@ -291,7 +297,7 @@ class _CustomTrace {
     final parts = frame.replaceAll('<anonymous closure>', 'anonymous').replaceAll('<anonymous, closure>', 'anonymous').split(' ').where((element) => element.isNotEmpty && element != 'new').toList();
     // print(parts);
     if (kIsWeb) {
-      final (int line, int column) = (int.parse(parts[1].split(':')[0]), int.parse(parts[1].split(':')[1]));
+      final [int line, int column] = parts[1].split(':').map<int>(int.parse).toList();
       return _Frame(
         fileName: parts[0],
         link: '${parts[0]}:${parts[1]}',
