@@ -63,6 +63,12 @@ enum DebugLevel {
       };
 }
 
+enum Printer {
+  developerLog,
+  print,
+  stdOut,
+}
+
 class FluidLogger {
   const FluidLogger({
     this.debugLevel = DebugLevel.error,
@@ -72,6 +78,7 @@ class FluidLogger {
     this.forceDebugMessages = false,
     this.packageName = 'lib',
     this.kIsWeb = false,
+    this.printer = Printer.print,
     this.kDebugMode = true,
   });
 
@@ -79,6 +86,7 @@ class FluidLogger {
 
   /// Provide package name from pubspec.yaml to get relative file paths.
   final String packageName;
+  final Printer printer;
 
   final DebugLevel debugLevel;
 
@@ -158,8 +166,8 @@ class FluidLogger {
           // }
           // final printString = '[${level.colorify(level.toString())}] ${level.colorify(e)} ${logMessage.fileLink}';
           final printString = '${level.colorify(e)} ${logMessage.fileLink}';
-          switch (kIsWeb) {
-            case true:
+          switch (printer) {
+            case Printer.print:
               print(printString);
             case _:
               log(
@@ -172,8 +180,8 @@ class FluidLogger {
         } else {
           // final printString = '[${level.colorify(level.toString())}] ${level.colorify(e)}';
           final printString = level.colorify(e);
-          switch (kIsWeb) {
-            case true:
+          switch (printer) {
+            case Printer.print:
               print(printString);
             case _:
               log(
