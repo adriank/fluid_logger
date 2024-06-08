@@ -1,6 +1,6 @@
 name: fluid_logger
 description: Clutterless logger capable of displaying times, positions in file.
-version: 0.0.6
+version: 0.0.7
 homepage: https://github.com/adriank/fluid_logger
 
 environment:
