@@ -113,12 +113,13 @@ class FluidLogger {
     if (!shouldPrintDebug(level)) {
       return;
     }
-
     // If we're in production, there is no trace to read from.
-    if (!kDebugMode) {
-      print(messageFn());
-      return;
-    }
+    // if (!kDebugMode) {
+    //   if (forceDebugMessages) {
+    //     print(messageFn());
+    //   }
+    //   return;
+    // }
 
     final (trace, previousTrace) = _getTraceData();
     final message = switch (level) {
@@ -205,11 +206,11 @@ class FluidLogger {
   }
 
   (_Frame current, _Frame? previous) _getTraceData() {
-    try {
-      throw Exception();
-    } catch (e, s) {
-      return (_CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb).currentCall, _CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb).previousCall);
-    }
+    final s = StackTrace.current;
+    return (
+      _CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb, kDebugMode: kDebugMode).currentCall,
+      _CustomTrace.fromStackTrace(s, kIsWeb: kIsWeb, kDebugMode: kDebugMode).previousCall,
+    );
   }
 
   /// Print information about current function. Takes a list of function arguments. The log message level is 'info'.
@@ -268,22 +269,40 @@ class _CustomTrace {
     this.previousCall,
   });
 
-  factory _CustomTrace.fromStackTrace(StackTrace trace, {bool kIsWeb = false}) {
+  factory _CustomTrace.fromStackTrace(StackTrace trace, {bool kIsWeb = false, required bool kDebugMode}) {
     // print('start _CustomTrace.fromStackTrace');
     final frames = trace.toString().split('\n');
     // print('frames:');
-    // frames.forEach(print);
-    final startIndex = kIsWeb ? 4 : 3;
+    // frames.indexed.forEach(print);
+    final startIndex = switch ((kIsWeb, kDebugMode)) {
+      (true, false) => 6,
+      (true, true) => 4,
+      _ => 3,
+    };
     return _CustomTrace(
-      currentCall: _readFrame(frames[startIndex], kIsWeb: kIsWeb),
-      previousCall: (frames.length >= startIndex + 1) ? _readFrame(frames[startIndex + 1], kIsWeb: kIsWeb) : null,
+      currentCall: _readFrame(
+        frames[startIndex],
+        kIsWeb: kIsWeb,
+        kDebugMode: kDebugMode,
+      ),
+      previousCall: (frames.length >= startIndex + 1)
+          ? _readFrame(
+              frames[startIndex + 1],
+              kIsWeb: kIsWeb,
+              kDebugMode: kDebugMode,
+            )
+          : null,
     );
   }
 
   _Frame currentCall;
   _Frame? previousCall;
 
-  static _Frame _readFrame(String frame, {bool kIsWeb = false}) {
+  static _Frame _readFrame(
+    String frame, {
+    bool kIsWeb = false,
+    required bool kDebugMode,
+  }) {
     // print('start _CustomTrace._readFrame, $frame');
     if (frame == '<asynchronous suspension>') {
       return const _Frame(
@@ -295,23 +314,43 @@ class _CustomTrace {
       );
     }
     final parts = frame.replaceAll('<anonymous closure>', 'anonymous').replaceAll('<anonymous, closure>', 'anonymous').split(' ').where((element) => element.isNotEmpty && element != 'new').toList();
-    // print(parts);
+    // print('parts: $parts');
+    // print('kIsWeb: $kIsWeb, kDebugMode: $kDebugMode');
     if (kIsWeb) {
-      final [int line, int column] = parts[1].split(':').map<int>(int.parse).toList();
-      return _Frame(
-        fileName: parts[0],
-        link: '${parts[0]}:${parts[1]}',
-        lineNumber: line,
-        functionName: parts[2].split('.anony')[0].split('(')[0].replaceAll('<fn>', 'anonymous fn'),
-        columnNumber: column,
-      );
+      try {
+        final [int line, int column] = switch (kDebugMode) {
+          true => parts[2].substring(1, parts[2].length - 1).split(':').reversed.take(2).map<int>(int.parse).toList().reversed.toList(),
+          false => parts[1].split(':').map<int>(int.parse).toList(),
+        };
+        // print('line: ${parts[0]}:${parts[1]}');
+        return _Frame(
+          fileName: parts[0],
+          link: '${parts[0]}:${parts[1]}',
+          lineNumber: line,
+          functionName: parts[2].split('.anony')[0].split('(')[0].replaceAll('<fn>', 'anonymous fn'),
+          columnNumber: column,
+        );
+      } catch (e) {
+        // print(e);
+        return const _Frame(
+          fileName: '?',
+          link: '',
+          lineNumber: 0,
+          functionName: '?',
+          columnNumber: 0,
+        );
+      }
     }
     List<String> listOfInfos = ['', '', '0', '0'];
 
     try {
-      listOfInfos = parts[2].replaceAll('(', '').replaceAll(')', '').split(':');
+      final temp = parts[2].replaceAll('(', '').replaceAll(')', '').split(':');
+      if (temp.length == listOfInfos.length) {
+        listOfInfos = temp;
+      } else {
+        listOfInfos[0] = parts[2];
+      }
     } catch (_) {}
-    // print(listOfInfos);
 
     return _Frame(
       fileName: listOfInfos[1],
