@@ -53,9 +53,9 @@ enum DebugLevel {
       };
 
   String Function(String text) get colorify => switch (this) {
-        debug => blue,
+        debug => gray,
         info => cyan,
-        start => white,
+        start => blue,
         success => green,
         warning => yellow,
         error => red,
